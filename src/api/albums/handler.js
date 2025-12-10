@@ -39,7 +39,7 @@ class AlbumsHandler{
     async putAlbumsByIdHandler(request, h){
         this._validator.validateAlbumPayload(request.payload);
         const { id } = request.params;
-        await this._service.editAlbumsById(id);
+        await this._service.editAlbumsById(id, request.payload);
         return{
             status: 'success',
             message: 'Album berhasil diubah!',

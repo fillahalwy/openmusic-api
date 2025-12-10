@@ -17,7 +17,7 @@ class AlbumsService {
 
         const query = {
             text: 'INSERT INTO albums VALUES($1, $2, $3, $4, $5) RETURNING id',
-            value: [id, name, year, createdAt, updatedAt],
+            values: [id, name, year, createdAt, updatedAt],
         };
 
         const result = await this._pool.query(query);
@@ -32,7 +32,7 @@ class AlbumsService {
     async getAlbumsById(id){
         const query = {
             text: 'SELECT * FROM albums WHERE id = $1',
-            value: [id],
+            values: [id],
         };
         const result = await this._pool.query(query);
 
@@ -47,7 +47,7 @@ class AlbumsService {
         const updatedAt = new Date().toISOString();
         const query = {
             text: 'UPDATE albums SET name = $1, year = $2, updated_at = $3 WHERE id = $4 RETURNING id',
-            value: [name, year, updatedAt, id],
+            values: [name, year, updatedAt, id],
         }
 
         const result = await this._pool.query(query);
@@ -60,7 +60,7 @@ class AlbumsService {
     async deleteAlbumsById(id){
         const query = {
             text: 'DELETE FROM albums WHERE id = $1 RETURNING id',
-            value: [id],
+            values: [id],
         }
         const result = await this._pool.query(query);
 

@@ -3,13 +3,15 @@ const Hapi = require('@hapi/hapi');
 const albums = require('./api/albums');
 const AlbumsService = require('./service/postgres/AlbumsService');
 const AlbumsValidator = require('./validator/albums/index');
-// const songs = requires('./api/songs');
-// const SongsService = require('./service/postgres/SongsService');
-// const SongsValidator = require('./validator/songs/index');
+const songs = require('./api/songs');
+const SongsService = require('./service/postgres/SongsService');
+const SongsValidator = require('./validator/songs/index');
 const ClientError = require('./exceptions/ClientError')
 const ServerError = require('./exceptions/ServerError')
 
 const init = async () => {
+    const albumsService = new AlbumsService();
+    const songsService = new SongsService();
     const server = Hapi.server({
         port: process.env.PORT,
         host: process.env.HOST,
@@ -20,13 +22,22 @@ const init = async () => {
         },
     });
 
-    await server.register({
-        plugin: albums,
-        options:{
-            service: AlbumsService,
-            validator: AlbumsValidator,
+    await server.register(
+        // {
+        //     plugin: albums,
+        //     options:{
+        //         service: albumsService,
+        //         validator: AlbumsValidator,
+        //     },
+        // },
+        {
+            plugin: songs,
+            options: {
+                service: songsService,
+                validator: SongsValidator,
+            },
         },
-    })
+    )
 
     server.ext('onPreResponse', (request, h) => {
         const { response } = request;
@@ -40,14 +51,14 @@ const init = async () => {
             return newResponse;
         }
 
-        if(response instanceof ServerError){
-            const newResponse = h.response({
-                status: 'fail',
-                message: response.message,
-            });
-            newResponse.code(response.statusCode);
-            return newResponse;
-        }
+        // if(response instanceof ServerError){
+        //     const newResponse = h.response({
+        //         status: 'fail',
+        //         message: response.message,
+        //     });
+        //     newResponse.code(response.statusCode);
+        //     return newResponse;
+        // }
 
         return h.continue
     });
