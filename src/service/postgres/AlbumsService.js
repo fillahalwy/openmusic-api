@@ -1,6 +1,5 @@
 const { Pool } = require('pg');
 const { nanoid } =  require('nanoid');
-const { mapDBToAlbumModel } = require('../../utils/index');
 const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
 
@@ -11,7 +10,7 @@ class AlbumsService {
     }
 
     async addAlbum({name, year}){
-        const id = nanoid(16);
+        const id = `album-${nanoid(16)}`;
         const createdAt = new Date().toISOString();
         const updatedAt = createdAt;
 
@@ -31,16 +30,37 @@ class AlbumsService {
 
     async getAlbumsById(id){
         const query = {
-            text: 'SELECT * FROM albums WHERE id = $1',
+            text: `SELECT 
+                    albums.id, albums.name, albums.year,
+                    songs.id as song_id, songs.title, songs.performer
+                   FROM albums
+                   LEFT JOIN songs ON songs.album_id = albums.id
+                   WHERE albums.id = $1`,
             values: [id],
-        };
-        const result = await this._pool.query(query);
+          };
+      
+          const result = await this._pool.query(query);
+      
+          if (!result.rows.length) {
+            throw new NotFoundError('Album tidak ditemukan');
+          }
 
-        if(!result.rows.length){
-            throw new NotFoundError('Catatan tidak ditemukan');
-        }
-        
-        return result.rows.map(mapDBToAlbumModel)[0];
+          const album = {
+            id: result.rows[0].id,
+            name: result.rows[0].name,
+            year: result.rows[0].year,
+            songs: [],
+          };
+      
+          if (result.rows.length > 0 && result.rows[0].song_id) {
+            album.songs = result.rows.map((row) => ({
+              id: row.song_id,
+              title: row.title,
+              performer: row.performer,
+            }));
+          }
+      
+          return album;
     }
 
     async editAlbumsById(id, {name, year}){
@@ -61,7 +81,8 @@ class AlbumsService {
         const query = {
             text: 'DELETE FROM albums WHERE id = $1 RETURNING id',
             values: [id],
-        }
+        };
+        
         const result = await this._pool.query(query);
 
         if(!result.rows.length){
