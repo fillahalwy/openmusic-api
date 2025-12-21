@@ -1,5 +1,3 @@
-export const shorthands = undefined;
-
 export const up = (pgm) => {
   pgm.createTable('playlist_song_activities', {
     id: { type: 'VARCHAR(50)', primaryKey: true },
