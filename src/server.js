@@ -2,6 +2,8 @@ require('dotenv').config();
 
 const Hapi = require('@hapi/hapi');
 const Jwt = require('@hapi/jwt');
+const Inert = require('@hapi/inert');
+const path = require('path');
 
 // albums
 const albums = require('./api/albums');
@@ -33,6 +35,20 @@ const collaborations = require('./api/collaborations');
 const CollaborationsService = require('./service/postgres/CollaborationsService');
 const CollaborationsValidator = require('./validator/collaborations');
 
+// Cache and feature
+const CacheService = require('./service/redis/CacheService');
+const AlbumLikesService = require('./service/postgres/AlbumLikesService');
+const albumLikes = require('./api/albumLikes');
+
+// Uploads & Storage
+const StorageService = require('./service/storage/StorageService');
+const UploadsValidator = require('./validator/uploads');
+
+// Exports
+const _exports = require('./api/exports');
+const ProducerService = require('./service/rabbitmq/ProducerService');
+const ExportsValidator = require('./validator/exports');
+
 // exceptions and token manager
 const TokenManager = require('./tokenize/TokenManager');
 const ClientError = require('./exceptions/ClientError');
@@ -44,6 +60,9 @@ const init = async () => {
   const authenticationsService = new AuthenticationsService();
   const collaborationsService = new CollaborationsService();
   const playlistsService = new PlaylistsService(collaborationsService);
+  const cacheService = new CacheService();
+  const albumLikesService = new AlbumLikesService(cacheService);
+  const storageService = new StorageService(path.resolve(__dirname, 'api/albums/covers'));
 
   const server = Hapi.server({
     port: process.env.PORT,
@@ -56,9 +75,8 @@ const init = async () => {
   });
 
   await server.register([
-    {
-      plugin: Jwt,
-    },
+    { plugin: Jwt },
+    { plugin: Inert },
   ]);
 
   server.auth.strategy('openmusic_jwt', 'jwt', {
@@ -83,6 +101,8 @@ const init = async () => {
       options: {
         service: albumsService,
         validator: AlbumsValidator,
+        storageService,
+        uploadValidator: UploadsValidator,
       },
     },
     {
@@ -125,7 +145,31 @@ const init = async () => {
         validator: CollaborationsValidator,
       },
     },
+    {
+      plugin: albumLikes,
+      options: {
+        service: albumLikesService,
+      },
+    },
+    {
+      plugin: _exports,
+      options: {
+        service: ProducerService,
+        validator: ExportsValidator,
+        playlistsService,
+      },
+    },
   ]);
+
+  server.route({
+    method: 'GET',
+    path: '/albums/covers/{param*}',
+    handler: {
+      directory: {
+        path: path.resolve(__dirname, 'api/albums/covers'),
+      },
+    },
+  });
 
   server.ext('onPreResponse', (request, h) => {
     const { response } = request;
