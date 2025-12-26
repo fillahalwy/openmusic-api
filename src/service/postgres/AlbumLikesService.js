@@ -12,7 +12,6 @@ class AlbumLikesService {
   async addLikeAlbum(albumId, userId) {
     const id = `like-${nanoid(16)}`;
 
-    // Pastikan album ada
     const queryCheckAlbum = {
       text: 'SELECT id FROM albums WHERE id = $1',
       values: [albumId],
@@ -22,7 +21,6 @@ class AlbumLikesService {
       throw new NotFoundError('Album tidak ditemukan');
     }
 
-    // Pastikan belum pernah like (sudah ada constraint UNIQUE di DB, tapi kita handle manual juga)
     const queryCheckLike = {
       text: 'SELECT id FROM user_album_likes WHERE user_id = $1 AND album_id = $2',
       values: [userId, albumId],
@@ -43,7 +41,6 @@ class AlbumLikesService {
       throw new InvariantError('Gagal menyukai album');
     }
 
-    // Hapus cache setiap ada perubahan data (Invalidation)
     await this._cacheService.delete(`likes:${albumId}`);
     return result.rows[0].id;
   }
@@ -60,20 +57,17 @@ class AlbumLikesService {
       throw new NotFoundError('Batal menyukai album gagal. Id tidak ditemukan');
     }
 
-    // Hapus cache setiap ada perubahan data
     await this._cacheService.delete(`likes:${albumId}`);
   }
 
   async getAlbumLikesCount(albumId) {
     try {
-      // Coba ambil dari cache terlebih dahulu
       const result = await this._cacheService.get(`likes:${albumId}`);
       return {
         likes: JSON.parse(result),
         isCache: true,
       };
     } catch (error) {
-      // Jika tidak ada di cache, ambil dari database
       const query = {
         text: 'SELECT id FROM user_album_likes WHERE album_id = $1',
         values: [albumId],
@@ -82,7 +76,6 @@ class AlbumLikesService {
       const result = await this._pool.query(query);
       const likesCount = result.rows.length;
 
-      // Simpan ke cache sebelum dikembalikan (bertahan 30 menit)
       await this._cacheService.set(`likes:${albumId}`, JSON.stringify(likesCount));
 
       return {

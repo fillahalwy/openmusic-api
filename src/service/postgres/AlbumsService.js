@@ -14,7 +14,7 @@ class AlbumsService {
     const updatedAt = createdAt;
 
     const query = {
-      text: 'INSERT INTO albums VALUES($1, $2, $3, $4, $5) RETURNING id',
+      text: 'INSERT INTO albums(id, name, year, created_at, updated_at) VALUES($1, $2, $3, $4, $5) RETURNING id',
       values: [id, name, year, createdAt, updatedAt],
     };
 
@@ -30,7 +30,7 @@ class AlbumsService {
   async getAlbumsById(id) {
     const query = {
       text: `SELECT 
-                    albums.id, albums.name, albums.year,
+                    albums.id, albums.name, albums.year, albums."coverUrl",
                     songs.id as song_id, songs.title, songs.performer
                    FROM albums
                    LEFT JOIN songs ON songs.album_id = albums.id
@@ -44,10 +44,12 @@ class AlbumsService {
       throw new NotFoundError('Album tidak ditemukan');
     }
 
+    // Mapping data album
     const album = {
       id: result.rows[0].id,
       name: result.rows[0].name,
       year: result.rows[0].year,
+      coverUrl: result.rows[0].coverUrl,
       songs: [],
     };
 
@@ -72,7 +74,7 @@ class AlbumsService {
     const result = await this._pool.query(query);
 
     if (!result.rows.length) {
-      throw new NotFoundError('Album gagal ditambah. Id tidak ditemukan!');
+      throw new NotFoundError('Gagal memperbarui album. Id tidak ditemukan!');
     }
   }
 
